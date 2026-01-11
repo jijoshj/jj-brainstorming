@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="email"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .lobby-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .lobby-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .lobby-info p {
+            color: #666;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .status-link {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .status-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .status-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 Chat App Login</h1>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+            </div>
+
+            <button type="submit" id="enterBtn">Enter</button>
+        </form>
+
+        <div id="message" class="message"></div>
+
+        <div id="lobbyInfo" class="lobby-info">
+            <h3>✅ Lobby Information</h3>
+            <p><strong>Lobby ID:</strong> <span id="lobbyId"></span></p>
+            <p><strong>Your Email:</strong> <span id="userEmail"></span></p>
+            <p><strong>Status:</strong> <span id="lobbyStatus"></span></p>
+        </div>
+
+        <div class="status-link">
+            <a href="#" id="viewStatus">View Current Lobby Status</a>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const enterBtn = document.getElementById('enterBtn');
+        const messageDiv = document.getElementById('message');
+        const lobbyInfoDiv = document.getElementById('lobbyInfo');
+        const viewStatusLink = document.getElementById('viewStatus');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = emailInput.value.trim();
+
+            if (!email) {
+                showMessage('Please enter your email', 'error');
+                return;
+            }
+
+            enterBtn.disabled = true;
+            enterBtn.textContent = 'Connecting...';
+
+            try {
+                const response = await fetch('http://localhost:8080/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    showLobbyInfo(data.lobby_id, data.email, data.message);
+                } else {
+                    showMessage(data.message, 'warning');
+                    lobbyInfoDiv.style.display = 'none';
+                }
+            } catch (error) {
+                showMessage('Failed to connect to server. Please try again.', 'error');
+                console.error('Error:', error);
+            } finally {
+                enterBtn.disabled = false;
+                enterBtn.textContent = 'Enter';
+            }
+        });
+
+        viewStatusLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            try {
+                const response = await fetch('http://localhost:8080/api/status');
+                const data = await response.json();
+
+                alert(`Current Lobby Status:\n\nUsers: ${data.current_users}/${data.max_users}\n\nRegistered Users:\n${data.users.map(u => u.email).join('\n')}`);
+            } catch (error) {
+                alert('Failed to fetch status');
+                console.error('Error:', error);
+            }
+        });
+
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+        }
+
+        function showLobbyInfo(lobbyId, email, status) {
+            document.getElementById('lobbyId').textContent = lobbyId;
+            document.getElementById('userEmail').textContent = email;
+            document.getElementById('lobbyStatus').textContent = status;
+            lobbyInfoDiv.style.display = 'block';
+        }
+    </script>
+</body>
+
+</html>
