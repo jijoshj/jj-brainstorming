@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 1000px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin-bottom: 5px;
+        }
+
+        .status {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .login-section {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .login-section h2 {
+            margin-bottom: 10px;
+        }
+
+        .online-count {
+            font-size: 16px;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .login-section input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .login-section button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .login-section button:hover {
+            background: #5568d3;
+        }
+
+        .login-section button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: 600;
+            animation: slideIn 0.3s ease;
+        }
+
+        .chat-section {
+            display: none;
+            grid-template-columns: 1fr 250px;
+            height: 600px;
+        }
+
+        .chat-section.active {
+            display: grid;
+        }
+
+        .chat-main {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            max-width: 70%;
+            word-wrap: break-word;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.own {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.other {
+            background: white;
+            border: 1px solid #e0e0e0;
+        }
+
+        .message.system {
+            background: #fff3cd;
+            color: #856404;
+            text-align: center;
+            margin: 10px auto;
+            max-width: 100%;
+            font-size: 14px;
+        }
+
+        .message.welcome {
+            background: #d4edda;
+            color: #155724;
+            text-align: center;
+            margin: 10px auto;
+            max-width: 100%;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .message.user-joined {
+            background: #d1ecf1;
+            color: #0c5460;
+            text-align: center;
+            margin: 10px auto;
+            max-width: 100%;
+            font-size: 14px;
+        }
+
+        .message.user-left {
+            background: #f8d7da;
+            color: #721c24;
+            text-align: center;
+            margin: 10px auto;
+            max-width: 100%;
+            font-size: 14px;
+        }
+
+        .message-header {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .message-content {
+            font-size: 15px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .input-section {
+            display: flex;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-section input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 15px;
+            margin-right: 10px;
+        }
+
+        .input-section button {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .input-section button:hover {
+            background: #5568d3;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-count-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .users-list {
+            list-style: none;
+        }
+
+        .users-list li {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .users-list li.current-user {
+            background: #e7f3ff;
+            border-left-color: #28a745;
+            font-weight: 600;
+        }
+
+        .user-status-dot {
+            width: 8px;
+            height: 8px;
+            background: #28a745;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .connection-status {
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .connection-status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .connection-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .connection-status.full {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        @media (max-width: 768px) {
+            .chat-section {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 WebSocket Chat</h1>
+            <div class="status" id="headerStatus">Maximum 5 users allowed</div>
+        </div>
+
+        <div id="connectionStatus" class="connection-status" style="display: none;"></div>
+
+        <!-- Login Section -->
+        <div class="login-section" id="loginSection">
+            <h2>Enter Your Name</h2>
+            <div class="online-count" id="onlineCount">Loading...</div>
+            <input type="text" id="usernameInput" placeholder="Your name" maxlength="20"
+                onkeypress="if(event.key === 'Enter') connect()">
+            <button onclick="connect()">Join Chat</button>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="chat-section" id="chatSection">
+            <div class="chat-main">
+                <div class="messages" id="messages"></div>
+                <div class="input-section">
+                    <input type="text" id="messageInput" placeholder="Type your message..."
+                        onkeypress="if(event.key === 'Enter') sendMessage()">
+                    <button onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+            <div class="sidebar">
+                <h3>
+                    👥 Joined Users
+                    <span class="user-count-badge" id="sidebarUserCount">0/5</span>
+                </h3>
+                <ul class="users-list" id="usersList">
+                    <!-- Users will be dynamically added here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let username;
+        let statusInterval;
+
+        // Fetch status on page load
+        async function updateOnlineCount() {
+            try {
+                const response = await fetch('http://localhost:8080/api/status');
+                const data = await response.json();
+                document.getElementById('onlineCount').textContent =
+                    `${data.current_connections}/${data.max_connections} users online`;
+                document.getElementById('headerStatus').textContent =
+                    `${data.current_connections}/${data.max_connections} users online`;
+            } catch (error) {
+                console.error('Failed to fetch status:', error);
+                document.getElementById('onlineCount').textContent = '0/5 users online';
+            }
+        }
+
+        // Update count every 2 seconds when on login screen
+        statusInterval = setInterval(updateOnlineCount, 2000);
+        updateOnlineCount(); // Initial call
+
+        function connect() {
+            username = document.getElementById('usernameInput').value.trim();
+
+            if (!username) {
+                alert('Please enter your name');
+                return;
+            }
+
+            console.log('Attempting to connect with username:', username);
+
+            // Stop updating count on login screen
+            clearInterval(statusInterval);
+
+            // Show connecting status
+            const button = document.querySelector('.login-section button');
+            button.textContent = 'Connecting...';
+            button.disabled = true;
+
+            // Connect to WebSocket
+            const wsUrl = `ws://localhost:8080/ws?username=${encodeURIComponent(username)}`;
+            console.log('WebSocket URL:', wsUrl);
+
+            ws = new WebSocket(wsUrl);
+            let connectionAccepted = false;
+
+            ws.onopen = () => {
+                console.log('✅ WebSocket connection opened');
+            };
+
+            ws.onmessage = (event) => {
+                console.log('📨 Message received:', event.data);
+                try {
+                    const message = JSON.parse(event.data);
+
+                    // Track if connection was accepted (welcomed)
+                    if (message.type === 'welcome') {
+                        connectionAccepted = true;
+                    }
+
+                    handleMessage(message);
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('❌ WebSocket error:', error);
+                if (!connectionAccepted) {
+                    // Only show error if we never got welcomed
+                    showErrorOnLogin('Connection error. Please try again.');
+                }
+                button.textContent = 'Join Chat';
+                button.disabled = false;
+                statusInterval = setInterval(updateOnlineCount, 2000);
+            };
+
+            ws.onclose = (event) => {
+                console.log('🔌 WebSocket closed. Code:', event.code, 'Reason:', event.reason);
+
+                if (connectionAccepted) {
+                    // Only show "Disconnected" if we were actually connected
+                    showConnectionStatus('Disconnected from chat', 'disconnected');
+
+                    setTimeout(() => {
+                        document.getElementById('chatSection').classList.remove('active');
+                        document.getElementById('loginSection').style.display = 'block';
+                        button.textContent = 'Join Chat';
+                        button.disabled = false;
+                        // Restart status updates
+                        statusInterval = setInterval(updateOnlineCount, 2000);
+                        updateOnlineCount();
+                    }, 2000);
+                } else {
+                    // Connection was rejected, just reset the button
+                    button.textContent = 'Join Chat';
+                    button.disabled = false;
+                    // Restart status updates
+                    statusInterval = setInterval(updateOnlineCount, 2000);
+                    updateOnlineCount();
+                }
+            };
+        }
+
+        function handleMessage(message) {
+            console.log('Handling message type:', message.type);
+
+            // Update user count in header and sidebar
+            if (message.user_count !== undefined) {
+                document.getElementById('headerStatus').textContent =
+                    `${message.user_count}/${message.max_users} users online`;
+                document.getElementById('sidebarUserCount').textContent =
+                    `${message.user_count}/${message.max_users}`;
+            }
+
+            // Update user list in sidebar
+            if (message.user_list) {
+                updateUserList(message.user_list);
+            }
+
+            if (message.type === 'welcome') {
+                // Show login successful and switch to chat
+                console.log('Received welcome message, switching to chat view');
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('chatSection').classList.add('active');
+                showConnectionStatus('Connected to chat', 'connected');
+                displayMessage(message);
+            } else if (message.type === 'error') {
+                // Show error - room is full
+                console.log('Received error message:', message.content);
+                showErrorOnLogin(message.content);
+
+                // Re-enable the button
+                const button = document.querySelector('.login-section button');
+                button.textContent = 'Join Chat';
+                button.disabled = false;
+            } else {
+                displayMessage(message);
+            }
+        }
+
+        function updateUserList(userList) {
+            const usersListEl = document.getElementById('usersList');
+            usersListEl.innerHTML = '';
+
+            userList.forEach(user => {
+                const li = document.createElement('li');
+                const isCurrentUser = user === username;
+
+                if (isCurrentUser) {
+                    li.className = 'current-user';
+                }
+
+                li.innerHTML = `
+                    <span class="user-status-dot"></span>
+                    ${user}${isCurrentUser ? ' (You)' : ''}
+                `;
+
+                usersListEl.appendChild(li);
+            });
+        }
+
+        function showErrorOnLogin(errorText) {
+            const loginSection = document.getElementById('loginSection');
+
+            // Remove any existing error messages
+            const existingError = loginSection.querySelector('.error-message');
+            if (existingError) {
+                existingError.remove();
+            }
+
+            // Create new error message
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = errorText;
+
+            loginSection.appendChild(errorDiv);
+
+            // Remove error message after 5 seconds
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+
+            if (!content || !ws || ws.readyState !== WebSocket.OPEN) {
+                console.log('Cannot send message. WebSocket state:', ws ? ws.readyState : 'null');
+                return;
+            }
+
+            const message = {
+                type: 'message',
+                username: username,
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+
+            console.log('Sending message:', message);
+            ws.send(JSON.stringify(message));
+            input.value = '';
+        }
+
+        function displayMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+
+            if (message.type === 'welcome') {
+                messageEl.className = 'message welcome';
+                messageEl.innerHTML = `
+                    <div class="message-content">${message.content}</div>
+                `;
+            } else if (message.type === 'user_joined') {
+                messageEl.className = 'message user-joined';
+                messageEl.innerHTML = `
+                    <div class="message-content">🟢 ${message.content}</div>
+                `;
+            } else if (message.type === 'user_left') {
+                messageEl.className = 'message user-left';
+                messageEl.innerHTML = `
+                    <div class="message-content">🔴 ${message.content}</div>
+                `;
+            } else if (message.type === 'error') {
+                messageEl.className = 'message system';
+                messageEl.innerHTML = `
+                    <div class="message-content">⚠️ ${message.content}</div>
+                `;
+            } else {
+                const isOwn = message.username === username;
+                messageEl.className = `message ${isOwn ? 'own' : 'other'}`;
+
+                const time = new Date(message.timestamp).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                messageEl.innerHTML = `
+                    ${!isOwn ? `<div class="message-header">${message.username}</div>` : ''}
+                    <div class="message-content">${message.content}</div>
+                    <div class="message-time">${time}</div>
+                `;
+            }
+
+            messagesDiv.appendChild(messageEl);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function showConnectionStatus(text, type) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.textContent = text;
+            statusEl.className = `connection-status ${type}`;
+            statusEl.style.display = 'block';
+
+            if (type === 'connected') {
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+
+</html>
