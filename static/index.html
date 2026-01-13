@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated Chat Application</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 1000px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin-bottom: 5px;
+        }
+
+        .status {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .login-section {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .login-section h2 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .lobby-info {
+            font-size: 16px;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .login-section input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .login-section input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .login-section button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .login-section button:hover {
+            background: #5568d3;
+        }
+
+        .login-section button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .waiting-section {
+            display: none;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .waiting-section.active {
+            display: block;
+        }
+
+        .waiting-message {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .waiting-users {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .waiting-users h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .user-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 14px;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: 600;
+            animation: slideIn 0.3s ease;
+        }
+
+        .chat-section {
+            display: none;
+            grid-template-columns: 1fr 250px;
+            height: 600px;
+        }
+
+        .chat-section.active {
+            display: grid;
+        }
+
+        .chat-main {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            max-width: 70%;
+            word-wrap: break-word;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.own {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.other {
+            background: white;
+            border: 1px solid #e0e0e0;
+        }
+
+        .message.system {
+            background: #fff3cd;
+            color: #856404;
+            text-align: center;
+            margin: 10px auto;
+            max-width: 100%;
+            font-size: 14px;
+        }
+
+        .message.welcome {
+            background: #d4edda;
+            color: #155724;
+            text-align: center;
+            margin: 10px auto;
+            max-width: 100%;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .message.user-joined {
+            background: #d1ecf1;
+            color: #0c5460;
+            text-align: center;
+            margin: 10px auto;
+            max-width: 100%;
+            font-size: 14px;
+        }
+
+        .message.user-left {
+            background: #f8d7da;
+            color: #721c24;
+            text-align: center;
+            margin: 10px auto;
+            max-width: 100%;
+            font-size: 14px;
+        }
+
+        .message-header {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .message-content {
+            font-size: 15px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .input-section {
+            display: flex;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-section input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 15px;
+            margin-right: 10px;
+        }
+
+        .input-section input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-section button {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .input-section button:hover {
+            background: #5568d3;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-count-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .users-list {
+            list-style: none;
+        }
+
+        .users-list li {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .users-list li.current-user {
+            background: #e7f3ff;
+            border-left-color: #28a745;
+            font-weight: 600;
+        }
+
+        .user-status-dot {
+            width: 8px;
+            height: 8px;
+            background: #28a745;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .connection-status {
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .connection-status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .connection-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .chat-section {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 Integrated Chat Application</h1>
+            <div class="status" id="headerStatus">Maximum 5 users per lobby</div>
+        </div>
+
+        <div id="connectionStatus" class="connection-status" style="display: none;"></div>
+
+        <!-- Login Section -->
+        <div class="login-section" id="loginSection">
+            <h2>Enter Your Email</h2>
+            <div class="lobby-info" id="lobbyInfo">Loading...</div>
+            <input type="email" id="emailInput" placeholder="your.email@example.com" maxlength="50"
+                onkeypress="if(event.key === 'Enter') joinLobby()">
+            <button onclick="joinLobby()" id="joinButton">Join Chat</button>
+        </div>
+
+        <!-- Waiting Section -->
+        <div class="waiting-section" id="waitingSection">
+            <h2>🕐 Waiting for all users to join...</h2>
+            <p class="waiting-message" id="waitingMessage">Please wait while other users join the lobby.</p>
+            <div class="spinner"></div>
+            <div class="waiting-users">
+                <h3>Users in Lobby (<span id="waitingUserCount">0/5</span>)</h3>
+                <div id="waitingUsersList"></div>
+            </div>
+            <p style="margin-top: 20px; color: #666; font-size: 14px;">
+                Chat will start automatically when all 5 users have joined.
+            </p>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="chat-section" id="chatSection">
+            <div class="chat-main">
+                <div class="messages" id="messages"></div>
+                <div class="input-section">
+                    <input type="text" id="messageInput" placeholder="Type your message..."
+                        onkeypress="if(event.key === 'Enter') sendMessage()">
+                    <button onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+            <div class="sidebar">
+                <h3>
+                    👥 Active Users
+                    <span class="user-count-badge" id="sidebarUserCount">0/5</span>
+                </h3>
+                <ul class="users-list" id="usersList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let userEmail;
+        let lobbyID;
+        let statusPollInterval;
+        let waitingPollInterval;
+
+        // Poll status on login screen
+        async function updateLobbyStatus() {
+            try {
+                const response = await fetch('http://localhost:8080/api/status');
+                const data = await response.json();
+
+                if (data.message) {
+                    // No lobby available
+                    document.getElementById('lobbyInfo').textContent = data.message;
+                    document.getElementById('headerStatus').textContent = 'No active lobby';
+                } else {
+                    document.getElementById('lobbyInfo').textContent =
+                        `${data.current_users}/5 users in current lobby`;
+                    document.getElementById('headerStatus').textContent =
+                        `${data.current_users}/5 users in lobby`;
+                }
+            } catch (error) {
+                console.error('Failed to fetch status:', error);
+                document.getElementById('lobbyInfo').textContent = 'Unable to connect to server';
+            }
+        }
+
+        // Start polling
+        statusPollInterval = setInterval(updateLobbyStatus, 2000);
+        updateLobbyStatus();
+
+        async function fetchAndDisplayLobbyStatus() {
+            try {
+                const response = await fetch('http://localhost:8080/api/status');
+                const data = await response.json();
+
+                console.log('Fetched lobby status:', data);
+
+                // Update ALL user count displays
+                const userCount = data.current_users || 0;
+                document.getElementById('waitingUserCount').textContent = `${userCount}/5`;
+                document.getElementById('headerStatus').textContent = `${userCount}/5 users in lobby`;
+                document.getElementById('sidebarUserCount').textContent = `${userCount}/5`;
+
+                // Display users in waiting list
+                if (data.users && data.users.length > 0) {
+                    updateWaitingUsersList(data.users);
+                    updateUserList(data.users);
+                }
+            } catch (error) {
+                console.error('Failed to fetch lobby status:', error);
+            }
+        }
+
+        async function joinLobby() {
+            const email = document.getElementById('emailInput').value.trim();
+
+            if (!email) {
+                alert('Please enter your email');
+                return;
+            }
+
+            // Basic email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+
+            const button = document.getElementById('joinButton');
+            button.textContent = 'Joining...';
+            button.disabled = true;
+
+            try {
+                const response = await fetch('http://localhost:8080/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    userEmail = data.email;
+                    lobbyID = data.lobby_id;
+
+                    console.log('Login successful:', data);
+
+                    // Stop polling
+                    clearInterval(statusPollInterval);
+
+                    // Show waiting section
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('waitingSection').classList.add('active');
+
+                    // Show reconnection message if it's a reconnection
+                    if (data.message.includes('Reconnecting')) {
+                        document.getElementById('waitingMessage').textContent = data.message;
+                    }
+
+                    // Fetch and display current lobby status immediately
+                    await fetchAndDisplayLobbyStatus();
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await fetchAndDisplayLobbyStatus();
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    const finalStatus = await fetchAndDisplayLobbyStatus();
+
+                    // Connect to WebSocket
+                    connectWebSocket();
+                } else {
+                    showError(data.message);
+                    button.textContent = 'Join Chat';
+                    button.disabled = false;
+                }
+            } catch (error) {
+                showError('Failed to connect to server. Please try again.');
+                console.error('Error:', error);
+                button.textContent = 'Join Chat';
+                button.disabled = false;
+            }
+        }
+
+        function connectWebSocket() {
+            console.log('Connecting to WebSocket...', userEmail, lobbyID);
+
+            // Start polling for updates while waiting (every 1 second for faster updates)
+            waitingPollInterval = setInterval(fetchAndDisplayLobbyStatus, 1000);
+
+            ws = new WebSocket(`ws://localhost:8080/ws?email=${encodeURIComponent(userEmail)}&lobby_id=${encodeURIComponent(lobbyID)}`);
+
+            ws.onopen = () => {
+                console.log('✅ WebSocket connection opened');
+            };
+
+            ws.onmessage = (event) => {
+                console.log('📨 Message received:', event.data);
+                try {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('❌ WebSocket error:', error);
+                if (waitingPollInterval) {
+                    clearInterval(waitingPollInterval);
+                }
+            };
+
+            ws.onclose = (event) => {
+                console.log('🔌 WebSocket closed', event);
+
+                if (waitingPollInterval) {
+                    clearInterval(waitingPollInterval);
+                }
+
+                showConnectionStatus('Disconnected from chat', 'disconnected');
+
+                setTimeout(() => {
+                    document.getElementById('chatSection').classList.remove('active');
+                    document.getElementById('waitingSection').classList.remove('active');
+                    document.getElementById('loginSection').style.display = 'block';
+                    document.getElementById('joinButton').textContent = 'Join Chat';
+                    document.getElementById('joinButton').disabled = false;
+
+                    statusPollInterval = setInterval(updateLobbyStatus, 2000);
+                    updateLobbyStatus();
+                }, 2000);
+            };
+        }
+
+        function handleMessage(message) {
+            console.log('Handling message:', message);
+
+            // Update user counts from message
+            if (message.user_count !== undefined) {
+                const userCount = message.user_count;
+                document.getElementById('headerStatus').textContent =
+                    `${userCount}/5 users in lobby`;
+                document.getElementById('sidebarUserCount').textContent =
+                    `${userCount}/5`;
+                document.getElementById('waitingUserCount').textContent =
+                    `${userCount}/5`;
+
+                console.log('Updated user count to:', userCount);
+            }
+
+            // Update user list from message
+            if (message.user_list && message.user_list.length > 0) {
+                console.log('Updating user list:', message.user_list);
+                updateUserList(message.user_list);
+                updateWaitingUsersList(message.user_list);
+            }
+
+            // Process message type
+            if (message.type === 'system_action') {
+                handleSystemAction(message);
+            } else if (message.type === 'message') {
+                displayChatMessage(message);
+            }
+        }
+
+        function handleSystemAction(message) {
+            switch (message.system_action) {
+                case 'welcome':
+                    showConnectionStatus('Connected to lobby', 'connected');
+
+                    // Display welcome message in chat area (but don't show chat yet)
+                    displayMessage(message, 'welcome');
+
+                    console.log('Welcome received. User count:', message.user_count);
+
+                    // Check if all users have joined
+                    if (message.user_count === 5) {
+                        console.log('All 5 users joined! Starting chat...');
+                        // Stop polling since we're starting chat
+                        if (waitingPollInterval) {
+                            clearInterval(waitingPollInterval);
+                        }
+                        // Delay to ensure UI is updated
+                        setTimeout(() => {
+                            startChat();
+                        }, 200);
+                    }
+                    break;
+
+                case 'user_joined':
+                    displayMessage(message, 'user-joined');
+
+                    console.log('User joined. User count:', message.user_count);
+
+                    // Check if all users have joined
+                    if (message.user_count === 5) {
+                        console.log('All 5 users joined! Starting chat...');
+                        // Stop polling since we're starting chat
+                        if (waitingPollInterval) {
+                            clearInterval(waitingPollInterval);
+                        }
+                        // Delay to ensure UI is updated
+                        setTimeout(() => {
+                            startChat();
+                        }, 200);
+                    }
+                    break;
+
+                case 'user_left':
+                    displayMessage(message, 'user-left');
+                    break;
+
+                case 'error':
+                    showError(message.content);
+                    break;
+            }
+        }
+
+        function startChat() {
+            console.log('Starting chat session...');
+
+            // Ensure user count is displayed correctly before transition
+            const currentCount = document.getElementById('waitingUserCount').textContent;
+            document.getElementById('sidebarUserCount').textContent = currentCount;
+            document.getElementById('headerStatus').textContent = currentCount.replace('/', '/') + ' users in lobby';
+
+            // Transition from waiting to chat
+            document.getElementById('waitingSection').classList.remove('active');
+            document.getElementById('chatSection').classList.add('active');
+            showConnectionStatus('Chat session started! All users connected.', 'connected');
+        }
+
+        function displayChatMessage(message) {
+            displayMessage(message, message.username === userEmail ? 'own' : 'other');
+        }
+
+        function displayMessage(message, className) {
+            const messagesDiv = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${className}`;
+
+            const time = new Date(message.timestamp).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            if (className === 'welcome' || className === 'user-joined' || className === 'user-left') {
+                messageEl.innerHTML = `<div class="message-content">${message.content}</div>`;
+            } else {
+                const isOwn = message.username === userEmail;
+                messageEl.innerHTML = `
+                ${!isOwn ? `<div class="message-header">${message.username}</div>` : ''}
+                <div class="message-content">${message.content}</div>
+                <div class="message-time">${time}</div>
+            `;
+            }
+
+            messagesDiv.appendChild(messageEl);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function updateUserList(userList) {
+            const usersListEl = document.getElementById('usersList');
+            usersListEl.innerHTML = '';
+
+            if (!userList || userList.length === 0) return;
+
+            userList.forEach(user => {
+                const li = document.createElement('li');
+                const isCurrentUser = user === userEmail;
+
+                if (isCurrentUser) {
+                    li.className = 'current-user';
+                }
+
+                li.innerHTML = `
+                <span class="user-status-dot"></span>
+                ${user}${isCurrentUser ? ' (You)' : ''}
+            `;
+
+                usersListEl.appendChild(li);
+            });
+        }
+
+        function updateWaitingUsersList(userList) {
+            const waitingListEl = document.getElementById('waitingUsersList');
+            waitingListEl.innerHTML = '';
+
+            if (!userList || userList.length === 0) return;
+
+            userList.forEach(user => {
+                const badge = document.createElement('span');
+                badge.className = 'user-badge';
+                badge.textContent = user === userEmail ? `${user} (You)` : user;
+                waitingListEl.appendChild(badge);
+            });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+
+            if (!content || !ws || ws.readyState !== WebSocket.OPEN) {
+                console.log('Cannot send message');
+                return;
+            }
+
+            const message = {
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+
+            console.log('Sending message:', message);
+            ws.send(JSON.stringify(message));
+            input.value = '';
+        }
+
+        function showError(message) {
+            const loginSection = document.getElementById('loginSection');
+
+            const existingError = loginSection.querySelector('.error-message');
+            if (existingError) {
+                existingError.remove();
+            }
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+
+            loginSection.appendChild(errorDiv);
+
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        function showConnectionStatus(text, type) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.textContent = text;
+            statusEl.className = `connection-status ${type}`;
+            statusEl.style.display = 'block';
+
+            if (type === 'connected') {
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+
+</body>
+
+</html>
